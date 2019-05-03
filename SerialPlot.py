@@ -19,15 +19,16 @@ import threading
 # plot class
 class SerialPlot:
     # constructor
-    def __init__(self, plt_axes, strPort, baudrate, columns, history, separator):       
-        self.abort = False
-         # open serial port
-        self.ser = serial.Serial(strPort, baudrate, timeout = 1)
-
+    def __init__(self, plt_axes, strPort, baudrate, columns, history, separator, timeout): 
         self.history = history
         self.columns = columns
         self.separator = separator
-        
+        self.timeout = timeout   
+        self.abort = False
+
+         # open serial port
+        self.ser = serial.Serial(strPort, baudrate, timeout = self.timeout)
+
         #init plots for the requested of colums 
         self.plots = []
         self.plot_data = []
@@ -76,12 +77,13 @@ def main():
     # add expected arguments
     parser.add_argument('port')
     parser.add_argument('baudrate', type=int)
-    parser.add_argument('--columns', dest="columns", type=int, default=1)
-    parser.add_argument('--history', dest="history", type=int, default=100)
-    parser.add_argument('--min', dest="min", type=int, default=0)
-    parser.add_argument('--max', dest="max", type=int, default=1000)
-    parser.add_argument('--interval', dest="interval", type=int, default=10)
-    parser.add_argument('--separator', dest="separator", default=",")
+    parser.add_argument('-c', '--columns', dest="columns", type=int, default=1, help="Number of columns in the serial output")
+    parser.add_argument('-t', '--history', dest="history", type=int, default=100, help="Number of datasets to plot")
+    parser.add_argument('--min', dest="min", type=float, default=0, help="Lowest y value to plot")
+    parser.add_argument('--max', dest="max", type=float, default=1000, help="Highest y value to plot")
+    parser.add_argument('-i', '--interval', dest="interval", type=float, default=10, help="Update interval for the plot, higher means faster update")
+    parser.add_argument('-s', '--separator', dest="separator", default=",", help="Separator for the serial input")
+    parser.add_argument('-o', '--timeout', dest="timeout", default=1, type=float, help="Timeout for serial data. Without this the reading could be blocked forever.")
 
     # parse args
     args = parser.parse_args()
@@ -90,7 +92,7 @@ def main():
     # set up animation
     fig = plt.figure()
     ax = plt.axes(xlim=(0, args.history), ylim=(args.min, args.max))
-    sp = SerialPlot(ax, args.port, args.baudrate, args.columns, args.history, args.separator)
+    sp = SerialPlot(ax, args.port, args.baudrate, args.columns, args.history, args.separator, args.timeout)
     anim = FuncAnimation(fig, sp.update, interval=args.interval)
     read_thread = threading.Thread(target=sp.read_contiously)
     read_thread.start()
